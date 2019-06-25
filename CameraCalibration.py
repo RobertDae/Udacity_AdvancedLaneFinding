@@ -21,21 +21,18 @@ objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
 
 images = glob.glob('./camera_cal/*.jpg')
-#print('debug')
-#print(len(images))
-print('[CameraCalibration]...Started')
+
+print('--> Hint: all informations and images of the different processing steps can be found in the ''outputs'' folder')
 print('')
+print('* Step1: CameraCalibration /Determine cam intrinsics')
+print('')
+print('[CameraCalibration]...Started')
 
 for idx,fname in enumerate(images):
-# Make a list of calibration images
-	#fname = 'calibration_test.png'
+	# Make a list of calibration images
 	img = cv2.imread(fname)
-    #plt.imshow(img)
-
 	# Convert to grayscale
 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #imgplot = plt.imshow(img)
-
 	# Find the chessboard corners
 	ret, corners = cv2.findChessboardCorners(gray, (nx, ny), None)
 
@@ -43,24 +40,19 @@ for idx,fname in enumerate(images):
 	if ret == True:
     # Draw and display the corners
 		#print('Debug:')
-        #print('working on'+fname)
+		print('--> working on: ' ,fname)
 		objpoints.append(objp)
 		corners2 = cv2.cornerSubPix(gray,corners, (11,11), (-1,-1), criteria)
 		imgpoints.append(corners2)
 		cv2.drawChessboardCorners(img, (nx, ny), corners2, ret)
 		write_name='Step1_CameraCalibration_AllCornersDetected'+str(idx)+'.jpg'
-		cv2.imwrite(write_name,img)
+		cv2.imwrite('./output_images/'+write_name,img)
 		plt.imshow(img)
+		plt.show
 	
 #preparation of calc the camera distortion	
 img = cv2.imread('./camera_cal/calibration2.jpg')
 img_size = (img.shape[1],img.shape[0])	
-#print('debug:')
-#print('--> Selected image: /camera_cal/calibration2.jpg: Width:' +str(img.shape[1])+', Height:'+str(img.shape[0]))
-
-#print('debug:')
-#print('objpoints: '+str(len(objpoints)))
-#print('imgpoints: '+str(len(imgpoints)))
 
 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints,imgpoints,img_size,None,None)
 	
@@ -72,11 +64,7 @@ for i in range(len(objpoints)):
 
 reproError =mean_error/len(objpoints)
     
-#print("--> mtx: ")
-#print(mtx)
-#print("--> dist:")
-#print(dist)
-#print("--> Reprojection error: {}".format(reproError) )    
+print("--> ReprojectionError[pixel]: {} ".format(reproError) )    
 
 #validation of the intrinsic calibration data via reprojection error
 if (reproError>1.0):
@@ -84,18 +72,16 @@ if (reproError>1.0):
 if ((reproError<1.0) and (reproError>0.1)):
     print('--> Validation: Calibration is good for use!')
 if (reproError<0.1):
-    print('--> Validation: Calibration is perfect')
-
-print('')      
+    print('--> Validation: Calibration is perfect')     
 print('[CameraCalibration]...Done')   
     
 # save the camera calibration coefficients for undistorting images later
 dist_pickle={}
 dist_pickle["mtx"] = mtx
 dist_pickle["dist"] = dist
+dist_pickle["rvecs"]= rvecs
+dist_pickle["tvecs"]= tvecs
 dist_pickle["repro_error"]= reproError
-#print('Debug: '
-#print(dist_pickle)
-dist_pickle = pickle.dump(dist_pickle, open( "./CameraCalibration_pickle.p", "wb" ) )
-print('[CameraCalibration]...Write calibration data to file: CameraCalibration_pickle.p [Done]')
-    
+
+dist_pickle = pickle.dump(dist_pickle, open( "./output_images/CameraCalibration_pickle.p", "wb" ) )
+print('[CameraCalibration]...Write calibration data to file: CameraCalibration_pickle.p')
