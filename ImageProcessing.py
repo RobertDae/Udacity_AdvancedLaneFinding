@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from Tracker import tracker
 
+
 #load the distortion information for the undistort function
 dist_pickle = pickle.load( open("output_images/CameraCalibration_pickle.p","rb") )
 mtx = dist_pickle["mtx"]
@@ -310,13 +311,13 @@ for idx, fname in enumerate(images):
     img = cv2.undistort(img,mtx,dist,None,mtx)
     #process the image through the image processing pipeline for lane detection
     print('--> image processing pipeline applied on the image')
-    write_name='./output_images/Step2_UndistortTheTestImages'+str(idx)+'.jpg'
+    write_name='./output_images/Step2_1UndistortTheTestImages'+str(idx)+'.jpg'
     cv2.imwrite(write_name,img)
     result = pipeline(img)
     #write_name='./outputs/Step2_Pipeline1_'+str(idx)+'.jpg'
     #cv2.imwrite(write_name,result)
     result2 = pipeline2(img)
-    write_name='./output_images/Step2_Pipeline2_'+str(idx)+'.jpg'
+    write_name='./output_images/Step2_2Pipeline2_'+str(idx)+'.jpg'
     cv2.imwrite(write_name,result2)
     #result3 = pipeline3(img)
     #write_name='./outputs/Step2_Pipeline3_'+str(idx)+'.jpg'
@@ -331,43 +332,54 @@ for idx, fname in enumerate(images):
                   [img.shape[1]*(0.5+bot_width/2),img.shape[0]*bottom_trim], [img.shape[1]*(0.5-bot_width/2),img.shape[0]*bottom_trim]])
     offset = img_size[0]*0.80
     dst = np.float32([[offset, 0], [img_size[0]-offset, 0], [img_size[0]-offset, img_size[1]], [offset, img_size[1]]])
-
+    #perform the perspective transform
     M = cv2.getPerspectiveTransform(src, dst)
     Minv = cv2.getPerspectiveTransform(dst, src)
     warped = cv2.warpPerspective(result2,M,img_size,flags=cv2.INTER_LINEAR)
-    #
-    write_name='./output_images/Step2_PerspectiveTransform_'+str(idx)+'.jpg'
+    write_name='./output_images/Step2_3PerspectiveTransform_'+str(idx)+'.jpg'
     cv2.imwrite(write_name,warped)
 
+    #setup the informations for the tracking
     window_width = 25
     window_height = 88
 
-    curve_centers = tracker(Mywindow_width=window_width, Mywindow_height=window_height, Mymargin=25, My_ym=10 / 720,
-                            My_xm=4 / 384, Mysmooth_factor=15)
+    curve_centers = tracker(Mywindow_width=window_width, Mywindow_height=window_height, Mymargin=25, My_ym=10/720,
+                            My_xm= 4/384, Mysmooth_factor=15)
 
     window_centroids = curve_centers.find_window_centroids(warped)
-
+    #points used to draw all left and right windows
     l_points = np.zeros_like(warped)
     r_points = np.zeros_like(warped)
-
+    #points used to finde the left and right lanes
     rightx = []
     leftx = []
 
+    #go through each level and draw the window
     for level in range(0, len(window_centroids)):
+        #add center value found in the frame, to the list of lane points per left,right
         leftx.append(window_centroids[level][0])
         rightx.append(window_centroids[level][1])
-
+        #window_mask is the function to draw the window areas
         l_mask = window_mask(window_width, window_height, warped, window_centroids[level][0], level)
         r_mask = window_mask(window_width, window_height, warped, window_centroids[level][1], level)
-
+        # Add graphic points from window_mask to the total pixels found
         l_points[(l_points == 255) | ((l_mask == 1))] = 255
         r_points[(r_points == 255) | ((r_mask == 1))] = 255
-
+    #draw the results
+    # add both left and right windows pixels together
     template = np.array(r_points + l_points, np.uint8)
+    #create a zero color channel
     zero_channel = np.zeros_like(template)
+    #make window pixels green
     template = np.array(cv2.merge((zero_channel, template, zero_channel)), np.uint8)
+    #make the orginginal road pixels 3 color channels
     warpage = np.array(cv2.merge((warped, warped, warped)), np.uint8)
+    #overlay the original road image with the window results
     result = cv2.addWeighted(warpage, 1, template, 0.5, 0.0)
+    write_name = './output_images/Step2_4WindowedBirdEyePerspective_' + str(idx) + '.jpg'
+    cv2.imwrite(write_name, result)
+
+    #fit the lane boundaries to the left and the right center positions found
     # yvals = range(0,warped.shape[0])
     yvals = np.linspace(0, 719, num=720)
     # print(warped.shape[0])
@@ -377,11 +389,11 @@ for idx, fname in enumerate(images):
     left_fitx = left_fit[0] * yvals * yvals + left_fit[1] * yvals + left_fit[2]
     left_fitx = np.array(left_fitx, np.int32)
 
-    # right_fit = np.polyfit(res_yvals, rightx, 2)
-    right_fit = np.polyfit(res_yvals, rightx, 3)
-    # right_fitx = right_fit[0]*yvals*yvals + right_fit[1]*yvals + right_fit[2]
-    right_fitx = right_fit[0] * yvals * yvals * yvals + right_fit[1] * yvals * yvals + right_fit[2] * yvals + right_fit[
-        3]
+    right_fit = np.polyfit(res_yvals, rightx, 2)
+    #right_fit = np.polyfit(res_yvals, rightx, 3)
+    right_fitx = right_fit[0]*yvals*yvals + right_fit[1]*yvals + right_fit[2]
+    #right_fitx = right_fit[0] * yvals * yvals * yvals + right_fit[1] * yvals * yvals + right_fit[2] * yvals + right_fit[
+    #    3]
     righ_fitx = np.array(right_fitx, np.int32)
 
     left_lane = np.array(list(
@@ -405,9 +417,14 @@ for idx, fname in enumerate(images):
 
     road_warped = cv2.warpPerspective(road, Minv, img_size, flags=cv2.INTER_LINEAR)
     road_warped_bkg = cv2.warpPerspective(road_bkg, Minv, img_size, flags=cv2.INTER_LINEAR)
+    write_name = './output_images/Step2_5PolyfittedLinesOnBirdView_' + str(idx) + '.jpg'
+    cv2.imwrite(write_name, road)
 
     base = cv2.addWeighted(img, 1.0, road_warped_bkg, -1.0, 0.0)
     result = cv2.addWeighted(base, 1.0, road_warped, 1.0, 0.0)
+
+    write_name = './output_images/Step2_6PolyfittedLinesOnFoto_' + str(idx) + '.jpg'
+    cv2.imwrite(write_name, base)
 
     ym_per_pix = curve_centers.ym_per_pix
     xm_per_pix = curve_centers.xm_per_pix
@@ -421,12 +438,12 @@ for idx, fname in enumerate(images):
     side_pos = 'left'
     if center_diff <= 0:
         side_pos = 'right'
-
+    #draw the text showing curvature, car offset position to the image center, speed
     cv2.putText(result, 'Radius of Curvature = ' + str(round(curverad, 3)) + '(m)', (50, 50), cv2.FONT_HERSHEY_SIMPLEX,
                 1, (255, 255, 255), 2)
     cv2.putText(result, 'Vehicle is ' + str(abs(round(center_diff, 3))) + 'm ' + side_pos + ' of center', (50, 100),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-    write_name = './output_images/' + 'result' + str(idx) + '.jpg'
+    write_name = './output_images/' + 'Step2_99_result' + str(idx) + '.jpg'
     cv2.imwrite(write_name, result)
     print('')
 
