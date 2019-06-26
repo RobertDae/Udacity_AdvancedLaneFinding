@@ -8,7 +8,7 @@ import pickle
 import glob
 from Tracker import tracker
 
-dist_pickle = pickle.load(open("calibration_pickle.p", "rb"))
+dist_pickle = pickle.load(open("output_images/CameraCalibration_pickle.p", "rb"))
 mtx = dist_pickle["mtx"]
 dist = dist_pickle["dist"]
 
