@@ -7,64 +7,78 @@ from ipywidgets import interact, interactive, fixed
 from moviepy.editor import VideoFileClip
 from IPython.display import HTML
 
-#%matplotlib inline
+# # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
+# objp = np.zeros((6*9,3), np.float32)
+# objp[:,:2] = np.mgrid[0:9,0:6].T.reshape(-1,2)
 
-print('...')
+# # termination criteria
+# criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-# prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
-objp = np.zeros((6*9,3), np.float32)
-objp[:,:2] = np.mgrid[0:9,0:6].T.reshape(-1,2)
+# # Arrays to store object points and image points from all the images.
+# objpoints = [] # 3d points in real world space
+# imgpoints = [] # 2d points in image plane.
 
-# termination criteria
-criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+# # Make a list of calibration images
+# images = glob.glob('./camera_cal/calibration*.jpg')
 
-# Arrays to store object points and image points from all the images.
-objpoints = [] # 3d points in real world space
-imgpoints = [] # 2d points in image plane.
+# fig, axs = plt.subplots(5,4, figsize=(16, 11))
+# fig.subplots_adjust(hspace = .2, wspace=.001)
+# axs = axs.ravel()
 
-# Make a list of calibration images
-images = glob.glob('./camera_cal/calibration*.jpg')
+# # Step through the list and search for chessboard corners
+# for i, fname in enumerate(images):
+    # img = cv2.imread(fname)
+    # gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    # # Find the chessboard corners
+    # ret, corners = cv2.findChessboardCorners(gray, (9,6),None)
 
-fig, axs = plt.subplots(5,4, figsize=(16, 11))
-fig.subplots_adjust(hspace = .2, wspace=.001)
-axs = axs.ravel()
+    # # If found, add object points, image points
+    # if ret == True:
+        # objpoints.append(objp)
 
-# Step through the list and search for chessboard corners
-for i, fname in enumerate(images):
-    img = cv2.imread(fname)
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    # Find the chessboard corners
-    ret, corners = cv2.findChessboardCorners(gray, (9,6),None)
-
-    # If found, add object points, image points
-    if ret == True:
-        objpoints.append(objp)
-
-        # this step to refine image points was taken from:
-        # http://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_calib3d/py_calibration/py_calibration.html
-        corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
-        imgpoints.append(corners2)
+        # # this step to refine image points was taken from:
+        # # http://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_calib3d/py_calibration/py_calibration.html
+        # corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+        # imgpoints.append(corners2)
     
-        # Draw and display the corners
-        img = cv2.drawChessboardCorners(img, (9,6), corners, ret)
-        axs[i].axis('off')
-        axs[i].imshow(img)
+        # # Draw and display the corners
+        # img = cv2.drawChessboardCorners(img, (9,6), corners, ret)
+        # axs[i].axis('off')
+        # axs[i].imshow(img)
 		
-# Test undistortion on an image
-img = cv2.imread('camera_cal/calibration2.jpg')
+# # Test undistortion on an image
+# img = cv2.imread('camera_cal/calibration2.jpg')
 
-img_size = (img.shape[1], img.shape[0])
+# img_size = (img.shape[1], img.shape[0])
 
-# Do camera calibration given object points and image points
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size,None,None)
-dst = cv2.undistort(img, mtx, dist, None, mtx)
+# # Do camera calibration given object points and image points
+# ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size,None,None)
+# dst = cv2.undistort(img, mtx, dist, None, mtx)
 
-# Save the camera calibration result for later use (we won't worry about rvecs / tvecs)
-dist_pickle = {}
-dist_pickle["mtx"] = mtx
-dist_pickle["dist"] = dist
-pickle.dump( dist_pickle, open( "calibration.p", "wb" ) )
+# # Save the camera calibration result for later use (we won't worry about rvecs / tvecs)
+# dist_pickle = {}
+# dist_pickle["mtx"] = mtx
+# dist_pickle["dist"] = dist
+# pickle.dump( dist_pickle, open( "output_images/CameraCalibration_pickle.p", "wb" ) )
 #dst = cv2.cvtColor(dst, cv2.COLOR_BGR2RGB)
+
+# prevoius image processing
+#load the distortion information for the undistort function
+dist_pickle = pickle.load( open("output_images/CameraCalibration_pickle.p","rb") )
+mtx = dist_pickle["mtx"]
+dist = dist_pickle["dist"]
+nx=9
+ny=6
+print('* Step2: Imageprocessing')
+print('')
+print('[ImageProcessing]..Started')
+img = cv2.imread('camera_cal/calibration2.jpg')
+img_size = (img.shape[1], img.shape[0])
+dst = cv2.undistort(img, mtx, dist, None, mtx)
+dst = cv2.cvtColor(dst, cv2.COLOR_BGR2RGB)
+
+#previous image processing
+
 # Visualize undistortion
 f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
 f.subplots_adjust(hspace = .2, wspace=.05)
@@ -72,19 +86,16 @@ ax1.imshow(img)
 ax1.set_title('Original Image', fontsize=30)
 ax2.imshow(dst)
 ax2.set_title('Undistorted Image', fontsize=30)
-print('...')
 
 # Choose an image from which to build and demonstrate each step of the pipeline
 exampleImg = cv2.imread('test_images/test3.jpg')
 exampleImg = cv2.cvtColor(exampleImg, cv2.COLOR_BGR2RGB)
 plt.imshow(exampleImg)
-print('...')
 
 # undistort image using camera calibration matrix from above
 def undistort(img):
     undist = cv2.undistort(img, mtx, dist, None, mtx)
     return undist
-print('...')
 
 exampleImg_undistort = undistort(exampleImg)
 
@@ -95,8 +106,10 @@ ax1.imshow(exampleImg)
 ax1.set_title('Original Image', fontsize=30)
 ax2.imshow(exampleImg_undistort)
 ax2.set_title('Undistorted Image', fontsize=30)
-
-print('...')
+write_name = './output_images/Step2_0OriginalImage_' + '.jpg'
+cv2.imwrite(write_name, exampleImg)
+write_name = './output_images/Step2_1UndistortedImage_' + '.jpg'
+cv2.imwrite(write_name, exampleImg_undistort)
 
 def unwarp(img, src, dst):
     h,w = img.shape[:2]
@@ -106,7 +119,6 @@ def unwarp(img, src, dst):
     # use cv2.warpPerspective() to warp your image to a top-down view
     warped = cv2.warpPerspective(img, M, (w,h), flags=cv2.INTER_LINEAR)
     return warped, M, Minv
-print('...')
 
 h,w = exampleImg_undistort.shape[:2]
 
@@ -134,43 +146,12 @@ ax1.set_xlim([0,w])
 ax1.set_title('Undistorted Image', fontsize=30)
 ax2.imshow(exampleImg_unwarp)
 ax2.set_title('Unwarped Image', fontsize=30)
+write_name = './output_images/Step2_3ImageBeforeUnwarp_'+ '.jpg'
+cv2.imwrite(write_name, exampleImg_undistort)
+write_name = './output_images/Step2_3UnwarpedImage_'+ '.jpg'
+cv2.imwrite(write_name, exampleImg_unwarp)
 
-print('...')
 
-# Visualize multiple color space channels
-exampleImg_unwarp_R = exampleImg_unwarp[:,:,0]
-exampleImg_unwarp_G = exampleImg_unwarp[:,:,1]
-exampleImg_unwarp_B = exampleImg_unwarp[:,:,2]
-exampleImg_unwarp_HSV = cv2.cvtColor(exampleImg_unwarp, cv2.COLOR_RGB2HSV)
-exampleImg_unwarp_H = exampleImg_unwarp_HSV[:,:,0]
-exampleImg_unwarp_S = exampleImg_unwarp_HSV[:,:,1]
-exampleImg_unwarp_V = exampleImg_unwarp_HSV[:,:,2]
-exampleImg_unwarp_LAB = cv2.cvtColor(exampleImg_unwarp, cv2.COLOR_RGB2Lab)
-exampleImg_unwarp_L = exampleImg_unwarp_LAB[:,:,0]
-exampleImg_unwarp_A = exampleImg_unwarp_LAB[:,:,1]
-exampleImg_unwarp_B2 = exampleImg_unwarp_LAB[:,:,2]
-fig, axs = plt.subplots(3,3, figsize=(16, 12))
-fig.subplots_adjust(hspace = .2, wspace=.001)
-axs = axs.ravel()
-axs[0].imshow(exampleImg_unwarp_R, cmap='gray')
-axs[0].set_title('RGB R-channel', fontsize=30)
-axs[1].imshow(exampleImg_unwarp_G, cmap='gray')
-axs[1].set_title('RGB G-Channel', fontsize=30)
-axs[2].imshow(exampleImg_unwarp_B, cmap='gray')
-axs[2].set_title('RGB B-channel', fontsize=30)
-axs[3].imshow(exampleImg_unwarp_H, cmap='gray')
-axs[3].set_title('HSV H-Channel', fontsize=30)
-axs[4].imshow(exampleImg_unwarp_S, cmap='gray')
-axs[4].set_title('HSV S-channel', fontsize=30)
-axs[5].imshow(exampleImg_unwarp_V, cmap='gray')
-axs[5].set_title('HSV V-Channel', fontsize=30)
-axs[6].imshow(exampleImg_unwarp_L, cmap='gray')
-axs[6].set_title('LAB L-channel', fontsize=30)
-axs[7].imshow(exampleImg_unwarp_A, cmap='gray')
-axs[7].set_title('LAB A-Channel', fontsize=30)
-axs[8].imshow(exampleImg_unwarp_B2, cmap='gray')
-axs[8].set_title('LAB B-Channel', fontsize=30)
-print('...')
 
 # Define a function that applies Sobel x or y, 
 # then takes an absolute value and applies a threshold.
@@ -191,7 +172,7 @@ def abs_sobel_thresh(img, orient='x', thresh_min=25, thresh_max=255):
     # 6) Return this mask as your binary_output image
     binary_output = sxbinary # Remove this line
     return binary_output
-print('...')
+
 
 def update(min_thresh, max_thresh):
     exampleImg_sobelAbs = abs_sobel_thresh(exampleImg_unwarp, 'x', min_thresh, max_thresh)
@@ -202,15 +183,14 @@ def update(min_thresh, max_thresh):
     ax1.set_title('Unwarped Image', fontsize=30)
     ax2.imshow(exampleImg_sobelAbs, cmap='gray')
     ax2.set_title('Sobel Absolute', fontsize=30)
-
+    write_name = './output_images/Step2_4AbsoluteSobel_'+ '.jpg'
+    cv2.imwrite(write_name, exampleImg_sobelAbs)
 #interact(update,min_thresh=(0,255),max_thresh=(0,255))
-print('...')
 
 # Define a function that applies Sobel x and y, 
 # then computes the magnitude of the gradient
 # and applies a threshold
 def mag_thresh(img, sobel_kernel=25, mag_thresh=(25, 255)):
-    
     # Apply the following steps to img
     # 1) Convert to grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -227,7 +207,6 @@ def mag_thresh(img, sobel_kernel=25, mag_thresh=(25, 255)):
     # 6) Return this mask as your binary_output image
     binary_output = np.copy(sxbinary) 
     return binary_output
-print('...')
 
 def update(kernel_size, min_thresh, max_thresh):
     exampleImg_sobelMag = mag_thresh(exampleImg_unwarp, kernel_size, (min_thresh, max_thresh))
@@ -238,10 +217,9 @@ def update(kernel_size, min_thresh, max_thresh):
     ax1.set_title('Unwarped Image', fontsize=30)
     ax2.imshow(exampleImg_sobelMag, cmap='gray')
     ax2.set_title('Sobel Magnitude', fontsize=30)
-
+    write_name = './output_images/Step2_sobelMag_' + '.jpg'
+    cv2.imwrite(write_name, exampleImg_sobelMag)
 #interact(update, kernel_size=(1,31,2), min_thresh=(0,255), max_thresh=(0,255))
-
-print('...')
 
 # Define a function that applies Sobel x and y, 
 # then computes the direction of the gradient
@@ -263,7 +241,7 @@ def dir_thresh(img, sobel_kernel=7, thresh=(0, 0.09)):
     binary_output[(grad_dir >= thresh[0]) & (grad_dir <= thresh[1])] = 1
     # 6) Return this mask as your binary_output image
     return binary_output
-print('...')
+#print('...')
 
 def update(kernel_size, min_thresh, max_thresh):
     exampleImg_sobelDir = dir_thresh(exampleImg_unwarp, kernel_size, (min_thresh, max_thresh))
@@ -274,10 +252,10 @@ def update(kernel_size, min_thresh, max_thresh):
     ax1.set_title('Unwarped Image', fontsize=30)
     ax2.imshow(exampleImg_sobelDir, cmap='gray')
     ax2.set_title('Sobel Direction', fontsize=30)
-
+    write_name = './output_images/Step2_sobelDirection_' + '.jpg'
+    cv2.imwrite(write_name, exampleImg_sobelDir)
 #interact(update, kernel_size=(1,31,2), min_thresh=(0,np.pi/2,0.01), max_thresh=(0,np.pi/2,0.01))
-
-print('...')
+#print('...')
 
 def update(mag_kernel_size, mag_min_thresh, mag_max_thresh, dir_kernel_size, dir_min_thresh, dir_max_thresh):
     exampleImg_sobelMag2 = mag_thresh(exampleImg_unwarp, mag_kernel_size, (mag_min_thresh, mag_max_thresh))
@@ -291,10 +269,10 @@ def update(mag_kernel_size, mag_min_thresh, mag_max_thresh, dir_kernel_size, dir
     ax1.set_title('Unwarped Image', fontsize=30)
     ax2.imshow(combined, cmap='gray')
     ax2.set_title('Sobel Magnitude + Direction', fontsize=30)
-
+    write_name = './output_images/Step2_sobelMag_and_Dir_' + '.jpg'
+    cv2.imwrite(write_name, exampleImg_undistort)
 #interact(update, mag_kernel_size=(1,31,2), mag_min_thresh=(0,255), mag_max_thresh=(0,255),dir_kernel_size=(1,31,2),dir_min_thresh=(0,np.pi/2,0.01),dir_max_thresh=(0,np.pi/2,0.01))
-
-print('...')
+#print('...')
 
 # Define a function that thresholds the S-channel of HLS
 # Use exclusive lower bound (>) and inclusive upper (<=)
@@ -306,7 +284,7 @@ def hls_sthresh(img, thresh=(125, 255)):
     binary_output[(hls[:,:,2] > thresh[0]) & (hls[:,:,2] <= thresh[1])] = 1
     # 3) Return a binary image of threshold result
     return binary_output
-print('...')
+#print('...')
 
 def update(min_thresh, max_thresh):
     exampleImg_SThresh = hls_sthresh(exampleImg_unwarp, (min_thresh, max_thresh))
@@ -317,10 +295,11 @@ def update(min_thresh, max_thresh):
     ax1.set_title('Unwarped Image', fontsize=30)
     ax2.imshow(exampleImg_SThresh, cmap='gray')
     ax2.set_title('HLS S-Channel', fontsize=30)
+    write_name = './output_images/Step2_1HLS_S_channel_' + '.jpg'
+    cv2.imwrite(write_name, exampleImg_SThresh)
 
 #interact(update,min_thresh=(0,255),max_thresh=(0,255))
-
-print('...')
+#print('...')
 
 # Define a function that thresholds the L-channel of HLS
 # Use exclusive lower bound (>) and inclusive upper (<=)
@@ -334,7 +313,7 @@ def hls_lthresh(img, thresh=(220, 255)):
     binary_output[(hls_l > thresh[0]) & (hls_l <= thresh[1])] = 1
     # 3) Return a binary image of threshold result
     return binary_output
-print('...')
+#print('...')
 
 def update(min_thresh, max_thresh):
     exampleImg_LThresh = hls_lthresh(exampleImg_unwarp, (min_thresh, max_thresh))
@@ -345,10 +324,11 @@ def update(min_thresh, max_thresh):
     ax1.set_title('Unwarped Image', fontsize=30)
     ax2.imshow(exampleImg_LThresh, cmap='gray')
     ax2.set_title('HLS L-Channel', fontsize=30)
-
+    write_name = './output_images/Step2_HLS_L_channel_' + '.jpg'
+    cv2.imwrite(write_name, exampleImg_LThresh)
 #interact(update, min_thresh=(0,255), max_thresh=(0,255))
 
-print('...')
+#print('...')
 
 # Define a function that thresholds the B-channel of LAB
 # Use exclusive lower bound (>) and inclusive upper (<=), OR the results of the thresholds (B channel should capture
@@ -365,7 +345,7 @@ def lab_bthresh(img, thresh=(190,255)):
     binary_output[((lab_b > thresh[0]) & (lab_b <= thresh[1]))] = 1
     # 3) Return a binary image of threshold result
     return binary_output
-print('...')
+#print('...')
 
 def update(min_b_thresh, max_b_thresh):
     exampleImg_LBThresh = lab_bthresh(exampleImg_unwarp, (min_b_thresh, max_b_thresh))
@@ -376,9 +356,10 @@ def update(min_b_thresh, max_b_thresh):
     ax1.set_title('Unwarped Image', fontsize=30)
     ax2.imshow(exampleImg_LBThresh, cmap='gray')
     ax2.set_title('LAB B-channel', fontsize=30)
-
+    write_name = './output_images/Step2_LAB_B_channel_' + '.jpg'
+    cv2.imwrite(write_name, exampleImg_LBThresh)
 #interact(update, min_b_thresh=(0,255), max_b_thresh=(0,255))
-print('...')
+#print('...')
 
 # Define the complete image processing pipeline, reads raw image and returns binary image with lane lines identified
 # (hopefully)
@@ -412,7 +393,7 @@ def pipeline(img):
     combined[(img_LThresh == 1) | (img_BThresh == 1)] = 1
     return combined, Minv
     
-print('...')
+#print('...')
 
 # Make a list of example images
 images = glob.glob('./test_images/*.jpg')
@@ -433,8 +414,6 @@ for image in images:
     axs[i].imshow(img_bin, cmap='gray')
     axs[i].axis('off')
     i += 1
-
-print('...')
 
 # Define method to fit polynomial to binary image with lines extracted, using sliding window
 def sliding_window_polyfit(img):
@@ -514,7 +493,6 @@ def sliding_window_polyfit(img):
     visualization_data = (rectangle_data, histogram)
     
     return left_fit, right_fit, left_lane_inds, right_lane_inds, visualization_data
-print('...')
 
 # visualize the result on example image
 exampleImg = cv2.imread('test_images/test2.jpg')
@@ -552,13 +530,16 @@ plt.plot(left_fitx, ploty, color='yellow')
 plt.plot(right_fitx, ploty, color='yellow')
 plt.xlim(0, 1280)
 plt.ylim(720, 0)
-
-print('...')
+#plt.savefig('./output_images/Step2_WindowedImage_Plt.jpg')
+write_name = './output_images/Step2_WindowedImage_' + '.jpg'
+cv2.imwrite(write_name, out_img)
+#print('...')
 
 # Print histogram from sliding window polyfit for example image
 plt.plot(histogram)
 plt.xlim(0, 1280)
-print('...')
+plt.savefig('./output_images/Step2_Histogram.jpg')
+#print('...')
 
 # Define method to fit polynomial to binary image based upon a previous fit (chronologically speaking);
 # this assumes that the fit will not change significantly from one video frame to the next
@@ -585,7 +566,7 @@ def polyfit_using_prev_fit(binary_warped, left_fit_prev, right_fit_prev):
     if len(rightx) != 0:
         right_fit_new = np.polyfit(righty, rightx, 2)
     return left_fit_new, right_fit_new, left_lane_inds, right_lane_inds
-print('...')
+#print('...')
 
 # visualize the result on example image
 exampleImg2 = cv2.imread('test_images/test5.jpg')
@@ -631,7 +612,10 @@ plt.plot(left_fitx2, ploty, color='yellow')
 plt.plot(right_fitx2, ploty, color='yellow')
 plt.xlim(0, 1280)
 plt.ylim(720, 0)
-print('...')
+plt.savefig('./output_images/Step2_LaneOnToWarpedBlankLinePlt.jpg')
+write_name = './output_images/Step2_1LaneOnToWarpedBlankImage_' + '.jpg'
+cv2.imwrite(write_name, result)
+#print('...')
 
 # Method to determine radius of curvature and distance from lane center 
 # based on binary image, polynomial fit, and L and R lane pixel indices
@@ -673,7 +657,7 @@ def calc_curv_rad_and_center_dist(bin_img, l_fit, r_fit, l_lane_inds, r_lane_ind
         lane_center_position = (r_fit_x_int + l_fit_x_int) /2
         center_dist = (car_position - lane_center_position) * xm_per_pix
     return left_curverad, right_curverad, center_dist
-print('...')
+#print('...')
 
 rad_l, rad_r, d_center = calc_curv_rad_and_center_dist(exampleImg_bin, left_fit, right_fit, left_lane_inds, right_lane_inds)
 
@@ -707,11 +691,16 @@ def draw_lane(original_img, binary_img, l_fit, r_fit, Minv):
     newwarp = cv2.warpPerspective(color_warp, Minv, (w, h)) 
     # Combine the result with the original image
     result = cv2.addWeighted(new_img, 1, newwarp, 0.5, 0)
+    #write_name = './output_images/Step2_1DrawLaneBackIntoTheOrigninalImage_' + '.jpg'
+    #cv2.imwrite(write_name, exampleImg_out1)
     return result
 
-exampleImg_out1 = draw_lane(exampleImg, exampleImg_bin, left_fit, right_fit, Minv)
-plt.imshow(exampleImg_out1)
-print('...')
+#
+#exampleImg_out1 = draw_lane(exampleImg, exampleImg_bin, left_fit, right_fit, Minv)
+#plt.imshow(exampleImg_out1)
+#write_name = './output_images/Step2_1DrawLaneBackIntoTheOrigninalImage_' + '.jpg'
+#cv2.imwrite(write_name, exampleImg_out1)
+#
 
 def draw_data(original_img, curv_rad, center_dist):
     new_img = np.copy(original_img)
@@ -727,12 +716,16 @@ def draw_data(original_img, curv_rad, center_dist):
     abs_center_dist = abs(center_dist)
     text = '{:04.3f}'.format(abs_center_dist) + 'm ' + direction + ' of center'
     cv2.putText(new_img, text, (40,120), font, 1.5, (200,255,155), 2, cv2.LINE_AA)
+    write_name = './output_images/Step2_DrawLaneAndData_' + '.jpg'
+    cv2.imwrite(write_name, new_img)
     return new_img
-print('...')
 
-exampleImg_out2 = draw_data(exampleImg_out1, (rad_l+rad_r)/2, d_center)
-plt.imshow(exampleImg_out2)
-print('...')
+
+#exampleImg_out2 = draw_data(exampleImg_out1, (rad_l+rad_r)/2, d_center)
+#plt.imshow(exampleImg_out2)
+#write_name = './output_images/Step2_12DrawlaneAndData_' + '.jpg'
+#cv2.imwrite(write_name, exampleImg_out2)
+#print('...')
 
 # Define a class to receive the characteristics of each line detection
 class Line():
@@ -784,11 +777,6 @@ class Line():
             if len(self.current_fit) > 0:
                 # if there are still any fits in the queue, best_fit is their average
                 self.best_fit = np.average(self.current_fit, axis=0)
-
-
-            
-
-print('...')
 
 def process_image(img):
     new_img = np.copy(img)
@@ -898,8 +886,9 @@ def process_image(img):
         cv2.putText(diag_img, text, (40,580), font, .5, color_ok, 1, cv2.LINE_AA)
         
         img_out = diag_img
+        write_name = './output_images/Step2_ProcessImage_' + '.jpg'
+        cv2.imwrite(write_name, img_out)
     return img_out
-print('...')
 
 def plot_fit_onto_img(img, fit, plot_color):
     if fit is None:
@@ -910,30 +899,57 @@ def plot_fit_onto_img(img, fit, plot_color):
     plotx = fit[0]*ploty**2 + fit[1]*ploty + fit[2]
     pts = np.array([np.transpose(np.vstack([plotx, ploty]))])
     cv2.polylines(new_img, np.int32([pts]), isClosed=False, color=plot_color, thickness=8)
+    write_name = './output_images/Step2_1PlotFitOntoImage' + '.jpg'
+    cv2.imwrite(write_name, new_img)
     return new_img
-print('...')
+
+# #process the images
+# l_line = Line()
+# r_line = Line()
+
+# images = glob.glob('./test_images/test*.jpg')
+# print('Number of images:')
+# print(len(images))
+
+# for idx, fname in enumerate(images):
+    # # read in the images found in the test folder
+    # print(fname)
+    # print('--> read image')
+    # img = cv2.imread(fname)
+    # rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # # undistort the image
+    # print('--> undistort image')
+    # img = cv2.undistort(img, mtx, dist, None, mtx)
+    # # process the image through the image processing pipeline for lane detection
+    # print('--> image processing pipeline applied on the image')
+    # write_name = './output_images/Step2_1UndistortTheTestImages' + str(idx) + '.jpg'
+    # cv2.imwrite(write_name, img)
+    # result = process_image(img)
+    # write_name = './output_images/Step2_Result_' + str(idx) + '.jpg'
+    # cv2.imwrite(write_name, result)
 
 #process the videos
 l_line = Line()
 r_line = Line()
 #my_clip.write_gif('test.gif', fps=12)
-video_output1 = 'project_video_output.mp4'
+video_output1 = 'output_videos/project_video_output.mp4'
 video_input1 = VideoFileClip('project_video.mp4')#.subclip(22,26)
+#video_input1.save_frame("output_images/project_video01.jpeg",) # saves the first frame 
 processed_video = video_input1.fl_image(process_image)
 processed_video.write_videofile(video_output1, audio=False)
 
 l_line = Line()
 r_line = Line()
-video_output2 = 'challenge_video_output.mp4'
+video_output2 = 'output_videos/challenge_video_output.mp4'
 video_input2 = VideoFileClip('challenge_video.mp4')#.subclip(10,12)
-#video_input2.save_frame("challenge01.jpeg", t=0.25) # saves the frame at time = 0.25s
+#video_input2.save_frame("output_images/challenge01.jpeg", t=0.25) # saves the frame at time = 0.25s
 processed_video = video_input2.fl_image(process_image)
 processed_video.write_videofile(video_output2, audio=False)
 
 l_line = Line()
 r_line = Line()
-video_output3 = 'harder_challenge_video_output.mp4'
+video_output3 = 'output_videos/harder_challenge_video_output.mp4'
 video_input3 = VideoFileClip('harder_challenge_video.mp4')#.subclip(0,3)
-#video_input3.save_frame("hard_challenge01.jpeg") # saves the first frame
+#video_input3.save_frame("output_images/harder_challenge01.jpeg") # saves the first frame
 processed_video = video_input3.fl_image(process_image)
 processed_video.write_videofile(video_output3, audio=False)
